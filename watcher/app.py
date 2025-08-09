@@ -1,38 +1,33 @@
-import os
-import sys
-import smtplib
+# watcher/app.py
+import os, re, csv, smtplib, ssl, datetime, sys, time
+from io import StringIO
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.utils import formataddr
+import requests
+from bs4 import BeautifulSoup
 
-# Hämta SMTP-inställningar från secrets
-SMTP_HOST = os.getenv("SMTP_HOST")
-SMTP_PORT = os.getenv("SMTP_PORT")
-SMTP_USER = os.getenv("SMTP_USER")
-SMTP_PASS = os.getenv("SMTP_PASS")
-RECIPIENT_EMAIL = os.getenv("RECIPIENT_EMAIL")
+# ---------- Robust env helpers ----------
+def env_int(name, default):
+    try:
+        v = os.getenv(name)
+        return int(v) if v not in (None, "", " ") else int(default)
+    except Exception:
+        return int(default)
 
-print("DEBUG: SMTP_HOST =", SMTP_HOST)
-print("DEBUG: SMTP_PORT =", SMTP_PORT)
-print("DEBUG: SMTP_USER =", SMTP_USER)
-print("DEBUG: SMTP_PASS length =", len(SMTP_PASS) if SMTP_PASS else "None")
-print("DEBUG: RECIPIENT_EMAIL =", RECIPIENT_EMAIL)
-
-# Testmail
-subject = "Test från GitHub Actions"
-body = "Detta är ett testmail från Systembolaget Watcher-scriptet."
-
-msg = MIMEText(body)
-msg["Subject"] = subject
-msg["From"] = SMTP_USER
-msg["To"] = RECIPIENT_EMAIL
-
+# CLI > env > default(7)
 try:
-    print("DEBUG: Försöker ansluta till SMTP-server...")
-    with smtplib.SMTP(SMTP_HOST, int(SMTP_PORT)) as server:
-        server.starttls()
-        print("DEBUG: TLS-anslutning upprättad")
-        server.login(SMTP_USER, SMTP_PASS)
-        print("DEBUG: Inloggning lyckades")
-        server.send_message(msg)
-        print("DEBUG: Mail skickat OK")
-except Exception as e:
-    print("ERROR: Misslyckades att skicka mail:", e)
+    DAYS_AHEAD = int(sys.argv[1])
+except Exception:
+    DAYS_AHEAD = env_int("DAYS_AHEAD", 7)
+
+RECIPIENT = os.getenv("RECIPIENT_EMAIL", "tomass@folkungagatan.com")
+SMTP_HOST = os.getenv("SMTP_HOST", "send.one.com")
+SMTP_PORT = env_int("SMTP_PORT", 587)   # 587 = STARTTLS, 465 = SSL
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASS = os.getenv("SMTP_PASS", "")
+
+PUSHOVER_TOKEN = os.getenv("PUSHOVER_TOKEN", "")
+PUSHOVER_USER  = os.getenv("PUSHOVER_USER", "")
+
+# ---------
