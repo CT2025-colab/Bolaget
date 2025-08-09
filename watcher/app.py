@@ -22,5 +22,29 @@ subject = "Test från Systembolaget Watcher (GitHub Actions)"
 text = "Detta är ett testmail."
 html = "<html><body><h2>Test från Systembolaget Watcher</h2><p>Detta är ett <b>HTML</b>-testmail.</p></body></html>"
 
-msg
+msg = MIMEMultipart('alternative')
+msg['Subject'] = subject
+msg['From'] = formataddr(("Folkungagatan.store-bevakning", SMTP_USER))
+msg['To'] = RECIPIENT
+msg.attach(MIMEText(text, 'plain', _charset='utf-8'))
+msg.attach(MIMEText(html, 'html', _charset='utf-8'))
 
+try:
+    if SMTP_PORT == 465:
+        # Implicit SSL (One.com: send.one.com:465)
+        ctx = ssl.create_default_context()
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=ctx, timeout=30) as s:
+            s.login(SMTP_USER, SMTP_PASS)
+            s.send_message(msg)
+    else:
+        # STARTTLS (vanligtvis port 587)
+        ctx = ssl.create_default_context()
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as s:
+            s.ehlo()
+            s.starttls(context=ctx)
+            s.ehlo()
+            s.login(SMTP_USER, SMTP_PASS)
+            s.send_message(msg)
+    print("DEBUG: Mail skickat ✅")
+except Exception as e:
+    print("ERROR: Misslyckades att skicka mail:", repr(e))
